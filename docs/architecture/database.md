@@ -166,6 +166,14 @@ erDiagram
 > (`actie_sleutel` PK, bewerkbare sjablonen) en `WATERBEHEER_DIENST` (`datum` PK,
 > `dienst_1`/`dienst_2`).
 
+**Unieke sleutels:** `metingen_diep_ondiep (bad_id, datum)`, `metingen_peuterbad
+(bad_id, datum)`, `metingen_coordinatoren (bad_id, datum, tijdstip)`, `acties
+(bad_id, datum, actie_type)`, `rondetaken_voltooid (taak_sleutel, datum)`,
+`limieten.parameter_naam`, `gebruikers.inlognaam`, `configuratie.sleutel`; de
+overige daily-tabellen zijn uniek op `datum`. `LIMIETEN` bevat ook de
+actie-drempelwaarden (`actie_*`) en de seizoengrenzen (`seizoen_begin/eind` als
+YYYYMMDD).
+
 ## Optimistische concurrency & attributie
 
 De waterbeheer meetwaarden/verbruik-tabellen (`metingen_diep_ondiep`,

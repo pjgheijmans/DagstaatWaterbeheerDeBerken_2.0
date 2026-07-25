@@ -1,10 +1,10 @@
 # Element Performance Specification (EPS)
 
-**Document ID:** EPS-DDZ-0.7
+**Document ID:** EPS-DDZ-0.8
 **Element:** Digitale Dagstaat Zwembad — full web application
-**Version:** 0.7
+**Version:** 0.8
 **Status:** DRAFT
-**Date:** 2026-07-04
+**Date:** 2026-07-25
 **Author:** P. Heijmans
 **Approver:**
 
@@ -29,6 +29,7 @@
 | 0.5     | 2026-06-23 | P. Heijmans | Added **Appendix A — Input Value Catalogue**: per-field definition, unit, decimal precision (fraction) and default valid range (min/max) for every input value across Waterbeheer, Coördinatoren, Limieten, Configuratie and Gebruikers, plus the free-text logboek entries (now hard-capped at 500 chars, client + server) and duty fields (A.13); §4.4 now points to it                                                                                                                                                                            |
 | 0.6     | 2026-06-28 | P. Heijmans | **Backend ported from Node/Express/TypeScript to PHP 8.0 (Slim 4 + PHP-DI)** so the app runs on shared Apache + MySQL hosting (the host offers no Node). The HTTP API, JSON shapes, data model and frontend are unchanged — requirements are unaffected; only the implementation/deployment statements change. Password hashing is now bcrypt; sessions use native PHP `$_SESSION` (no `SESSION_SECRET`); CI added (PHPUnit backend + Jest/ESLint frontend). Updated §2.3, §5.1/5.3, §6.1, §7.2/7.3, §8.1, §9 R-002/R-003 and Appendix A accordingly |
 | 0.7     | 2026-07-04 | P. Heijmans | Read-only presentation reworked (GEN-007/AUTH-003): fields in read-only mode are set truly `readonly`/`disabled` and rendered "boxed see-through" (border kept, page shows through); the standalone "Alleen-lezen" banner is removed and the persistent "Laatst gewijzigd door … om …" line is replaced by a popup shown on a 409 concurrent-edit conflict (§3.11). The derived combined-chlorine day-max (gebonden chloor) is now surfaced on the Waterbeheer Meetwaarden/Peuterbad pages **only when its `filter_spoelen_gebonden` action is active** for that bath, otherwise hidden (§3.11, §3.5). |
+| 0.8     | 2026-07-25 | P. Heijmans | Dev-container port corrected to **8888** (§5.3; the 8080 bind was reserved by Windows/WinNAT). GEN-002 hardened: date navigation never allows a future date and disables Vorige/Volgende Dag at either bound, enforced on both client and server. No other requirement changes; the Peuterbad subtab merge and readonly-CSS unification are presentation-only and recorded in the EDS (→ 0.7). |
 
 ---
 
@@ -219,7 +220,7 @@ Applies to all data-entry screens (Waterbeheer and Coördinatoren).
 | ID      | Requirement                                                                                                                                                                                                                                                                                                                        | Priority | Impl.                                                                                                                                                  |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | GEN-001 | The user shall select an active operating date; all data entry and display is scoped to that date.                                                                                                                                                                                                                                 | Must     | Yes                                                                                                                                                    |
-| GEN-002 | Date navigation shall be constrained to within the configured season window (begin/end).                                                                                                                                                                                                                                           | Should   | Yes                                                                                                                                                    |
+| GEN-002 | Date navigation shall be constrained to within the configured season window (begin/end) and shall never allow a future date; navigation controls at either bound shall be disabled rather than silently ignored.                                                                                                                 | Should   | Yes (client: datumkiezer `min`/`max` + disabled Vorige/Volgende Dag buttons; server: `Validator` rejects a future `datum`)                             |
 | GEN-003 | Edits shall autosave after a short debounce, with a visible save status (pending / saving / saved / error).                                                                                                                                                                                                                        | Must     | Yes                                                                                                                                                    |
 | GEN-004 | Numeric entry shall be validated against the configured limits with inline visual feedback, and the locale decimal comma shall be normalised to a point.                                                                                                                                                                           | Should   | Yes                                                                                                                                                    |
 | GEN-005 | Each day's data shall be persisted idempotently (insert-or-update keyed by date / block).                                                                                                                                                                                                                                          | Must     | Yes                                                                                                                                                    |
@@ -508,7 +509,7 @@ table, clear a table, or reset the database (double confirmation). _(ADM-002..00
 - **Production:** runs on shared Apache + MySQL hosting with PHP 8.0 (`pdo_mysql`);
   the docroot points at `backend/public/` (Slim front controller via `.htaccess`).
 - **Dev/test:** containerised with Docker Compose — web service (Apache + mod_php) on
-  port 8080 and MySQL on 3306.
+  port 8888 and MySQL on 3306.
 - Single-origin deployment (client and API same host); no public exposure assumed
   beyond the operator's network.
 
