@@ -62,7 +62,7 @@ services:
             # bestanden per request ging van seconden naar milliseconden. vendor/
             # wordt bij de eerste start in dit lege volume geïnstalleerd
             # (zie backend/Dockerfile). Herinstalleren: `docker compose down -v`
-            # of `docker volume rm nieuwe_site_tryout_vendor_data`.
+            # of `docker volume rm dagstaatwaterbeheerdebercken_vendor_data`.
             - vendor_data:/var/www/html/backend/vendor
         depends_on:
             db:

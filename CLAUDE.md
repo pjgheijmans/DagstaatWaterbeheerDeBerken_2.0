@@ -25,7 +25,7 @@ Update these when you change behaviour, the HTTP API, the schema or the stack (b
 **Docker (preferred)** — the `web` service runs Apache + mod_php (built from `backend/`); the `db` service runs MySQL 8:
 
 ```
-docker compose up -d              # start full stack (app on :8080, DB on :3306)
+docker compose up -d              # start full stack (app on :8888, DB on :3306)
 docker compose restart web        # apply config/Dockerfile changes (code is mounted, so most edits are live)
 docker compose down               # stop
 docker compose down -v && docker compose up -d   # full reset — wipes DB
@@ -37,7 +37,7 @@ On first start the `web` container runs `composer install` (when `vendor/autoloa
 
 **Performance — `vendor/` volume + opcache**: `vendor/` is a named volume (`vendor_data`, container-ext4), **not** on the bind-mount. Serving the ~1300 dependency files per request off the OneDrive bind-mount cost seconds of bootstrap per request; on the volume it's milliseconds. `opcache` is enabled (`backend/docker/opcache.ini`, `validate_timestamps=1`/`revalidate_freq=2` so live edits still reload). Consequences:
 - The install-guard checks `vendor/autoload.php`, not the `vendor/` dir (the volume mount-point always exists), so don't revert it.
-- `docker compose down -v` wipes `vendor_data` too → next `up` reinstalls it. Reinstall just deps: `docker volume rm nieuwe_site_tryout_vendor_data`.
+- `docker compose down -v` wipes `vendor_data` too → next `up` reinstalls it. Reinstall just deps: `docker volume rm dagstaatwaterbeheerdebercken_vendor_data`.
 - Install extracts onto the fast volume, so the old 300 s Composer process-timeout problem is largely gone; if it ever half-installs, finish with `docker compose exec -e COMPOSER_PROCESS_TIMEOUT=0 web composer install`.
 
 **Local (no Docker; requires a reachable MySQL with `init.sql` loaded):**
@@ -46,7 +46,7 @@ On first start the `web` container runs `composer install` (when `vendor/autoloa
 cd backend
 composer install
 DB_HOST=127.0.0.1 DB_USER=root DB_PASSWORD=geheim_wachtwoord DB_NAME=zwembad_status \
-  php -S localhost:8080 -t public
+  php -S localhost:8888 -t public
 ```
 
 Note: the PHP built-in server short-circuits requests for known extensions (`.js`/`.css`/…) and never hits Slim, so `/js/*.js` 404s there. That's a built-in-server limitation, not an app bug — on Apache `.htaccess` routes those to `FrontendController::serveAsset`. See `backend/README.md` for the workaround.
