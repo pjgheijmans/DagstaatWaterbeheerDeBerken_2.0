@@ -1,16 +1,16 @@
 # Element Design Specification (EDS)
 
-**Document ID:** EDS-DDZ-0.6
+**Document ID:** EDS-DDZ-0.7
 **Element:** Digitale Dagstaat Zwembad — full web application
-**Version:** 0.6
+**Version:** 0.7
 **Status:** DRAFT
-**Date:** 2026-07-04
+**Date:** 2026-07-25
 **Author:** P. Heijmans
 **Approver:**
-**Parent EPS:** EPS-DDZ-0.7
+**Parent EPS:** EPS-DDZ-0.8
 
 > This EDS records _how_ the application is designed to satisfy the requirements in
-> EPS-DDZ-0.6. It is descriptive of the current implementation (not aspirational):
+> EPS-DDZ-0.8. It is descriptive of the current implementation (not aspirational):
 > where the design has known gaps relative to the EPS, they are recorded as design
 > decisions and risks rather than hidden. Requirement IDs referenced here (AUTH-,
 > GEN-, WB-, CO-, ACT-, LIM-, ADM-, TRD-) are defined in the parent EPS.
@@ -27,6 +27,7 @@
 | 0.4     | 2026-06-23 | P. Heijmans | §5.4 now cross-references the new **EPS Appendix A — Input Value Catalogue** (per-field definition, unit, decimal precision and default min/max) and notes the schema `DECIMAL` precision is the authoritative fraction; parent EPS → 0.5                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | 0.5     | 2026-06-28 | P. Heijmans | **Backend re-platformed from Node/Express/TypeScript to PHP 8.0 (Slim 4 + PHP-DI)** for shared Apache/MySQL hosting (DD-022). Re-described the server-side design throughout: Slim+PSR-15 middleware, PHP-DI container wiring (`config/dependencies.php`/`routes.php`), PDO-per-request (DD-012), native `$_SESSION` via `SessionMiddleware` (DD-005/017), `JsonErrorHandler`+`AppError` (DD-008), `Validator` instead of Zod (DD-007), bcrypt instead of scrypt (DD-018), `bin/init-db.php` for schema bootstrap (DD-006). Updated §1.3, §2, §3, §5, §7, §8 (8080; CI now exists), §9 (PHPUnit; tooling) and §10/§11. Frontend, data model and HTTP API unchanged; parent EPS → 0.6 |
 | 0.6     | 2026-07-04 | P. Heijmans | Read-only UI reworked: `AuthModule.actualiseerLeesmodus` now sets fields truly `readonly`/`disabled` (computed fields untouched) and the CSS gives a "boxed see-through" look (border kept, transparent fill); the standalone leesmodus-banner is removed and the "Laatst gewijzigd" line replaced by a conflict popup (`behandelConflict` → reload + `ui.meld` from `_recentsteWijziging`, DD-020). The derived gebonden-chloor day-max fields on the Waterbeheer meetwaarden pages are hidden by default and shown only when a `filter_spoelen_gebonden` action exists for the bath (`MetingenModule._toonGebondenChloorVelden`). Updated §5.5.3/§5.5.4 (popup i.p.v. toast; geen last-edited-tekst meer), §6.2; parent EPS → 0.7 |
+| 0.7     | 2026-07-25 | P. Heijmans | Dev-container port corrected to **8888** throughout (§8.1; the 8080 bind was reserved by Windows/WinNAT). Datumkiezer `min`/`max` bound to the season window and today, Vorige/Volgende Dag disabled at the bounds, date change no longer queues an autosave; `Validator` mirrors the future-date bound server-side (§7.4; parent EPS GEN-002; detail moved to `architecture/frontend.md`'s `NavModule` entry). Peuterbad's Meetwaarden and Verbruik subtabs were merged into one "Meetwaarden en Verbruik" subtab (measurements left, consumption stacked right); §4.3 updated. The "boxed see-through" readonly look now applies uniformly to all permanently-disabled fields, not only the active leesmodus section (§6.2). Added §9.4 documenting the opt-in Xdebug/`tracer.js` function-tracing dev aids. **Restructured §6/§7** to stop restating the module tables, directory trees, DI/class/ER diagrams already in `docs/architecture/*.md` — those sections now link out and keep only decision rationale (`DD-…`) and EPS traceability, per the EPS/EDS-vs-architecture split agreed with the author; moved the DB key/uniqueness list to `architecture/database.md`. Parent EPS → 0.8 |
 
 ---
 
@@ -379,8 +380,9 @@ chip under the date selector records the two-person duty (WB-009).
 
 #### Waterbeheer → Peuterbad (UI-003)
 
-Subtabs Meetwaarden (pH, chloor, filterdruk, flow), Verbruik (water, chemicals
-chloor/zwavelzuur, each with consumption cell) and Taken.
+Subtabs **Meetwaarden en Verbruik** (merged: measurements — pH, chloor, filterdruk,
+flow — left column, consumption blocks — water, chemicals chloor/zwavelzuur, each
+with a read-only consumption cell — stacked right) and **Taken**.
 
 #### Waterbeheer → Logboek (UI-004) / Coördinatoren → Logboek (UI-009)
 
@@ -837,64 +839,11 @@ sequenceDiagram
 
 ### 6.2 Module & Directory Structure
 
-```
-frontend/
-├── partials/        # HTML fragments assembled by FrontendController
-│   ├── head, nav, dagstaat, limieten, actieteksten, gebruikers, database,
-│   ├── configuratie, trendanalyse, login, footer
-├── css/style.css
-└── js/              # ES6 class modules, loaded sequentially
-    ├── state.js     (AppState)        ├── api.js      (ApiClient)
-    ├── ui.js        (UIManager)       ├── auth.js     (AuthModule)
-    ├── nav.js       (NavModule)       ├── metingen.js (MetingenModule)
-    ├── taken.js     (TakenModule)     ├── verbruik.js (VerbruikModule)
-    ├── opslaan.js   (OpslaanModule)
-    ├── logboek.js   ├── gebruikers.js ├── database.js
-    ├── trend.js     ├── limieten.js   └── app.js      (Application + window.*)
-```
+The module list, directory layout, DI/container diagram and class diagram live in
+[`architecture/frontend.md`](architecture/frontend.md) — not repeated here. This
+section covers the cross-cutting client *behaviour* and the decisions behind it.
 
-Container/DI diagram:
-
-```mermaid
-graph TB
-    App["Application (app.js)\n— maakt alle modules\n— exposeert ~25 window.* globals"]
-    App --> State["AppState"]
-    App --> Api["ApiClient"]
-    App --> UI["UIManager"]
-    App --> Auth["AuthModule"]
-    App --> Nav["NavModule"]
-    App --> Met["MetingenModule"]
-    App --> Taken["TakenModule"]
-    App --> Verb["VerbruikModule"]
-    App --> Save["OpslaanModule (1.2s debounce)"]
-    App --> Log["LogboekModule"]
-    App --> Geb["GebruikersModule"]
-    App --> DBm["DatabaseModule (CSV)"]
-    App --> Trend["TrendModule (Chart.js)"]
-    App --> Lim["LimietenModule"]
-```
-
-| Module               | Responsibility                                                                                                                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AppState`           | Single source of truth for shared state and timers                                                                                                                                                |
-| `ApiClient`          | `fetch` wrapper (credentials); `parseNumberValue` (comma→point, empty→null)                                                                                                                       |
-| `UIManager`          | Floating toast messages, the confirm/info **modal** (`bevestig`/`meld`, replacing `window.confirm`/`alert`), field validation against limits, autosave-status indicator                           |
-| `NavModule`          | Date navigation bounded by the season window                                                                                                                                                      |
-| `AuthModule`         | Login/logout, activate dashboard, switch role                                                                                                                                                     |
-| `MetingenModule`     | Load/render measurements; ⚠/✓ field markers from open/resolved actions; coordinator blocks                                                                                                        |
-| `TakenModule`        | Per-bath Taken subtab composed from `/api/taken`, in three categories (Verplicht / Belangrijk / Overig); toggle via rondetaken/acties endpoints; ⚠ tab/subtab badge for open Verplicht items only |
-| `VerbruikModule`     | Load/save consumption & heating; `berekenVerbruik` deltas (Diep/Ondiep + Peuterbad)                                                                                                               |
-| `OpslaanModule`      | All autosave orchestration (central + per block); `peuterbadOnvolledig`                                                                                                                           |
-| `LogboekModule`      | Log entries for water-management and coordinators                                                                                                                                                 |
-| `GebruikersModule`   | User management with per-row autosave                                                                                                                                                             |
-| `DatabaseModule`     | CSV import/export, truncate, reinitialise                                                                                                                                                         |
-| `TrendModule`        | Chart.js charts for measurements and consumption                                                                                                                                                  |
-| `LimietenModule`     | Load/render/save limits (autosave); date conversions; `_normaliseer`                                                                                                                              |
-| `ActieTekstenModule` | Load/render/save the action-text templates (autosave) with a live placeholder preview (Administrator)                                                                                             |
-| `DienstModule`       | Waterbeheer-dienst chip: load/save the duty pair (datalist of water managers + free text); pre-fills the logged-in user                                                                           |
-| `ConfiguratieModule` | Configuratie screen: load/render the generic settings and autosave each value (`PUT /api/configuratie/:sleutel`); Administrator-only                                                              |
-
-Cross-cutting client behaviour added in 0.3: `OpslaanModule`/`MetingenModule`/
+Cross-cutting client behaviour added in 0.3 (DD-020): `OpslaanModule`/`MetingenModule`/
 `VerbruikModule` track a per-record `versie` in `AppState.versies`, send it on each
 save and update it from the response; a **409** triggers `MetingenModule.behandelConflict()`
 (reload + a popup that explains the conflict and names who last saved, built from the
@@ -908,7 +857,11 @@ history window) and, when not, sets that section's fields to `readonly`/`disable
 (fields already read-only by design are left untouched) and tags an em-dash placeholder
 on empty ones. The presentation is CSS-only via the `.alleen-lezen` class: fields keep
 their box/border and relief but get a transparent (see-through) fill — there is no
-separate read-only banner.
+separate read-only banner. The same "boxed see-through" treatment now applies uniformly
+to every permanently-disabled/readonly field (`td input:disabled`, `td input[readonly]`,
+`td select:disabled`) — Verbruik consumption cells, bezoekers counts, gebonden chloor —
+replacing the earlier per-field grey `#f0f0f0` fills; table header cells (`th`) are
+centred throughout for consistency.
 
 ### 6.3 Data Fetching Strategy
 
@@ -931,53 +884,12 @@ derived views (field markers, task badges, consumption).
 | DB driver       | PDO (`pdo_mysql`), one connection per request (DD-012)                                                                                               | Built-in; fits process-per-request |
 | App composition | An `AppFactory` builds the Slim `App` from the DI container (DD-013); `public/index.php` is the entry point; `bin/init-db.php` provisions the schema | PHPUnit can mount the app          |
 
-Composition (DI) — concrete classes are bound in `config/dependencies.php`:
-
-```php
-// config/dependencies.php (excerpt)
-IMetingenRepository::class => fn (ContainerInterface $c) => new MetingenRepository($c->get(PDO::class)),
-IActiesRepository::class   => fn (ContainerInterface $c) => new ActiesRepository($c->get(PDO::class)),
-IMetingenService::class    => fn (ContainerInterface $c) => new MetingenService(
-    $c->get(IMetingenRepository::class),
-    $c->get(IActiesRepository::class),
-    $c->get(ICoordinatorenRepository::class), // also implements IDaggegevensProvider
-),
-// config/routes.php then maps the HTTP routes onto MetingenController, guarded by the middleware.
-```
-
 ### 7.2 Module & Directory Structure
 
-```
-backend/
-├── public/index.php       # entry point: build container → AppFactory → run
-├── config/
-│   ├── dependencies.php    # PHP-DI bindings (the only wiring point)
-│   ├── routes.php          # HTTP routes → controllers, guarded by middleware
-│   └── settings.php        # runtime settings (DB env-vars, etc.)
-├── bin/init-db.php         # provisions the schema (runInitSql) — run once
-├── src/
-│   ├── Controllers/        *Controller.php             (HTTP only)
-│   ├── Services/           I*Service.php + *Service.php (business logic)
-│   ├── Repositories/       I*Repository.php + *Repository.php (SQL only, PDO)
-│   ├── Middleware/         AuthMiddleware · RechtenMiddleware · SessionMiddleware
-│   ├── Errors/             AppError + JsonErrorHandler
-│   ├── Validation/         Validator.php
-│   └── Support/            Optimistisch · Historie · Wachtwoord · Auteur · Frontend · Json
-├── composer.json          # PSR-4 (Zwembad\ → src/); pins platform php 8.0
-└── test/                  # PHPUnit (Unit/ + Integration/ + Support/)
-```
-
-Per-domain layering (metingen example):
-
-```mermaid
-graph TB
-    F["config/routes.php + PHP-DI"] --> Ctrl["MetingenController"]
-    Ctrl -->|IMetingenService| Svc["MetingenService"]
-    Svc -->|IMetingenRepository| R1["MetingenRepository"]
-    Svc -->|IActiesRepository| R2["ActiesRepository"]
-    Svc -->|IDaggegevensProvider| R3["CoordinatorenRepository"]
-    R1 & R2 & R3 -->|PDO| DB[("MySQL")]
-```
+The DI wiring example, the directory layout, the per-domain layering diagram and
+the class diagram live in [`architecture/backend.md`](architecture/backend.md)
+§1–§2, §5 — every domain follows the same controller → service → repository
+pattern behind interface boundaries (DD-002).
 
 ### 7.3 Database Design
 
@@ -990,44 +902,12 @@ graph TB
 | Write pattern     | Upsert keyed by date / (bad,datum) / (bad,datum,actie_type). Waterbeheer meetwaarden/verbruik use a version-checked upsert (`Support\Optimistisch`, DD-020) for conflict detection                                                                     | Idempotent daily records; no silent lost updates |
 | Seeding           | `seedAllDefaults()` seeds 36 limieten + 2 users on a fresh DB (`actie_teksten`/`waterbeheer_dienst` survive a reset via `init.sql`)                                                                                                                    | First-run usability                              |
 
-Entity-relationship (key tables):
-
-```mermaid
-erDiagram
-    BADEN ||--o{ METINGEN_DIEP_ONDIEP : heeft
-    BADEN ||--o{ METINGEN_PEUTERBAD : heeft
-    BADEN ||--o{ METINGEN_COORDINATOREN : heeft
-    BADEN ||--o{ ACTIES : heeft
-    BADEN { int id PK  varchar naam }
-    METINGEN_DIEP_ONDIEP { int id PK  int bad_id FK  date datum  decimal ph_waarde  decimal chloor_waarde  decimal temperatuur  int flow  decimal filter_druk_in  decimal filter_druk_uit  decimal kathodische_bescherming  int versie  varchar auteur  timestamp bijgewerkt_op }
-    METINGEN_PEUTERBAD { int id PK  int bad_id FK  date datum  decimal ph_waarde  decimal chloor_waarde  int flow  decimal filter_druk_in  int water  int chemicalien_chloor  int chemicalien_zwavelzuur  int versie  varchar auteur  timestamp bijgewerkt_op }
-    METINGEN_COORDINATOREN { int id PK  int bad_id FK  date datum  time tijdstip  varchar auteur  decimal ph_waarde  decimal chloor_vrij  decimal chloor_totaal  decimal watertemperatuur  varchar helderheid  tinyint bad_gebruikt }
-    COORDINATOREN_CHECKLIST { int id PK  date datum  tinyint proef_waterspeel  tinyint proef_spraypark  tinyint proef_douches  tinyint proef_glijbaan  varchar auteur }
-    COORDINATOREN_DAGGEGEVENS { int id PK  date datum  decimal lucht_temperatuur  int bezoekers_vandaag  varchar auteur }
-    VERBRUIK_DIEP_ONDIEP { int id PK  date datum  int Flocculant  int water_diep  int water_ondiep  int water_totaal  int elektriciteit_nacht  int elektriciteit_dag  int gas  int chemicalien_chloor  int chemicalien_zwavelzuur  int versie  varchar auteur  timestamp bijgewerkt_op }
-    VERWARMINGS_SYSTEEM { int id PK  date datum  bool verwarming_status_1  bool verwarming_status_2  bool verwarming_status_3  bool verwarming_status_4  bool verwarming_druk_ok  bool verwarming_visuele_controle  int versie  varchar auteur  timestamp bijgewerkt_op }
-    ACTIES { int id PK  int bad_id FK  date datum  varchar beschrijving  varchar actie_type  bool opgelost  datetime opgelost_op  varchar opgelost_door }
-    RONDETAKEN_VOLTOOID { int id PK  varchar taak_sleutel  date datum  datetime voltooid_op  varchar voltooid_door }
-    LIMIETEN { int id PK  varchar parameter_naam  decimal min_waarde  decimal max_waarde }
-    ACTIE_TEKSTEN { varchar actie_sleutel PK  varchar sjabloon  varchar omschrijving }
-    WATERBEHEER_DIENST { date datum PK  varchar dienst_1  varchar dienst_2 }
-    CONFIGURATIE { varchar sleutel PK  varchar waarde  varchar omschrijving  varchar type  timestamp bijgewerkt_op }
-    GEBRUIKERS { int id PK  varchar voornaam  varchar achternaam  varchar inlognaam  varchar wachtwoord  enum taak }
-    LOGBOEK { int id PK  date datum  datetime tijdstip  varchar auteur  text tekst }
-    COORDINATOREN_LOGBOEK { int id PK  date datum  datetime tijdstip  varchar auteur  text tekst }
-```
-
-**Uniqueness/keys of note:** `metingen_diep_ondiep (bad_id, datum)`,
-`metingen_peuterbad (bad_id, datum)`, `metingen_coordinatoren (bad_id, datum,
-tijdstip)`, `acties (bad_id, datum, actie_type)`, `rondetaken_voltooid
-(taak_sleutel, datum)`, `limieten.parameter_naam`, `gebruikers.inlognaam`,
-`configuratie.sleutel`; daily tables unique on `datum`. `LIMIETEN` also stores the
-action thresholds (`actie_*`) and the season window (`seizoen_begin/eind` as
-YYYYMMDD). `RONDETAKEN_VOLTOOID` stores only daily completions; the task catalogue
-itself lives in code (`RondetakenRepository`), so it has no `bad_id` FK. The
-waterbeheer meetwaarden/verbruik tables carry `versie` (optimistic-concurrency
-token), `auteur` and `bijgewerkt_op` for attribution (DD-020); `CONFIGURATIE` is a
-generic key/value settings store seeded with `sessie_timeout_minuten` (DD-019).
+The ER diagram and the full key/uniqueness list live in
+[`architecture/database.md`](architecture/database.md). Two decisions shape it:
+the waterbeheer meetwaarden/verbruik tables carry `versie`/`auteur`/`bijgewerkt_op`
+for optimistic-concurrency attribution (DD-020); `CONFIGURATIE` is a generic
+key/value settings store seeded with `sessie_timeout_minuten` (DD-019) rather than
+per-setting columns.
 
 ### 7.4 Middleware Stack
 
@@ -1038,8 +918,10 @@ registered as Slim's error middleware (outermost).
 
 Per mutating route the controller calls the `Validator` for that domain;
 measurement/consumption/coordinator rules are lenient (the UI mixes strings and
-numbers) and strict for gebruiker/limiet/login. `RechtenMiddleware` runs the role
-check before the handler body.
+numbers) and strict for gebruiker/limiet/login. `Validator` also rejects a future
+`datum`, mirroring the datumkiezer's client-side `max` (`NavModule`, see
+`architecture/frontend.md`) on the server. `RechtenMiddleware` runs the role check
+before the handler body.
 
 ### 7.5 Error Handling Strategy
 
@@ -1057,7 +939,7 @@ known errors. Slim's error middleware (`JsonErrorHandler`) maps `AppError`'s sta
 | Item            | Choice                                                                      | Notes                                             |
 | --------------- | --------------------------------------------------------------------------- | ------------------------------------------------- |
 | Hosting (prod)  | Shared Apache + MySQL hosting with PHP 8.0 (`pdo_mysql`)                    | Docroot → `backend/public/`; Slim via `.htaccess` |
-| Container (dev) | Docker Compose: `web` (Apache + mod_php, 8080) + `db` (MySQL 8, 3306)       | `restart`; db healthcheck; dev/test only          |
+| Container (dev) | Docker Compose: `web` (Apache + mod_php, 8888) + `db` (MySQL 8, 3306)       | `restart`; db healthcheck; dev/test only          |
 | Web server      | Apache + mod_php (both prod and the dev container)                          | `.htaccess` rewrites to `public/index.php`        |
 | TLS/HTTPS       | Provided by the host in production                                          | Not handled in-app                                |
 | Schema setup    | Run `php bin/init-db.php` once (the dev container does this on first start) | Not `mysql < init.sql` (see §7.3)                 |
@@ -1126,7 +1008,20 @@ Current counts (indicative): PHPUnit **87 unit + 18 integration**; frontend Jest
 TypeScript backend's coverage (controllers, services, validation, optimistic-locking
 conflict branches, password hashing, action generation).
 
-### 9.4 Known Constraints
+### 9.4 Debugging Aids (opt-in, dev only)
+
+Both layers can log every function call with its input arguments and return value;
+off by default, no overhead when disabled.
+
+- **Backend:** Xdebug 3.3 function trace, baked into the dev image
+  (`backend/docker/xdebug.ini`, default `xdebug.mode=off`). `TRACE=1 docker compose up
+  -d web` maps to `XDEBUG_MODE=trace` and writes one `.xt` trace file per request to
+  `backend/logs/xdebug/` (`.gitignore`d).
+- **Frontend:** `frontend/js/tracer.js` wraps every `app.*` module method, logging
+  calls/returns to the console. Enabled via the Configuratie page's "Functietracing"
+  checkbox (or `?trace=1`), backed by `localStorage.trace`.
+
+### 9.5 Known Constraints
 
 - Solo, AI-assisted developer; complexity must stay manageable.
 - No client build step (DD-003); no DB migration tool (DD-006).
@@ -1159,23 +1054,23 @@ conflict branches, password hashing, action generation).
 | AUTH-001..004 (login/session/roles/logout)        | §5.2, §7.4                                                                          | native `$_SESSION` + `AuthMiddleware`/`RechtenMiddleware`                                                                             |
 | AUTH-005 (credential security)                    | §5.2 (DD-018)                                                                       | Met — bcrypt hashing; unit + integration tested                                                                                       |
 | AUTH-006/007 (idle/sliding time-out; expiry UX)   | §5.2 (DD-005/DD-019/DD-021)                                                         | `SessionMiddleware` sliding idle time-out from config; 401 → login message                                                            |
-| CFG-001/002 (general configuration)               | §4.3 (UI-014), §5.1 (`/api/configuratie`), §6.2 (ConfiguratieModule), §7.3 (DD-019) | Generic key/value store; shared cache; Administrator-only write                                                                       |
+| CFG-001/002 (general configuration)               | §4.3 (UI-014), §5.1 (`/api/configuratie`), `architecture/frontend.md` (ConfiguratieModule), §7.3 (DD-019) | Generic key/value store; shared cache; Administrator-only write                                                                       |
 | GEN-007 (concurrent-edit detection + attribution) | §5.1, §5.4, §5.5.4, §7.3 (DD-020)                                                   | `Support\Optimistisch` version check (409); `auteur`/`bijgewerkt_op`; client round-trips `versie`                                     |
-| GEN-008/009 (passive completeness; version label) | §4.2 (DD-021), §6.2                                                                 | Subtab/page-tab dot; `/api/versie` header label                                                                                       |
-| GEN-001/002 (date scoping, season bounds)         | §4.4, §6.2 (NavModule)                                                              | Client date state + season limits                                                                                                     |
-| GEN-003 (autosave + status)                       | §4.5, §6.2 (OpslaanModule), flows §3                                                | 1.2 s debounce (DD-010)                                                                                                               |
-| GEN-004 (validation, comma)                       | §4.2, §6.2 (UIManager/ApiClient), §7.4                                              | `Validator` (server) + client validation                                                                                              |
+| GEN-008/009 (passive completeness; version label) | §4.2 (DD-021), `architecture/frontend.md`                                          | Subtab/page-tab dot; `/api/versie` header label                                                                                       |
+| GEN-001/002 (date scoping, season bounds)         | §4.4, §7.4 (`Validator`), `architecture/frontend.md` (NavModule)                    | Client date state + season limits; future-date rejected server-side too                                                              |
+| GEN-003 (autosave + status)                       | §4.5, `architecture/frontend.md` (OpslaanModule), flows §3                          | 1.2 s debounce (DD-010)                                                                                                               |
+| GEN-004 (validation, comma)                       | §4.2, `architecture/frontend.md` (UIManager/ApiClient), §7.4                        | `Validator` (server) + client validation                                                                                              |
 | GEN-005 (idempotent persistence)                  | §7.3                                                                                | Upserts keyed by date/block                                                                                                           |
 | GEN-006 (author stamping)                         | §5.4 (`Support\Auteur`), §7.3                                                       | Partial                                                                                                                               |
 | WB-001..008 (water log)                           | §4.3 (UI-002/003/004), §5.1, §7.2/7.3                                               | metingen (incl. kathodische bescherming) + verbruik + verwarming + logboek                                                            |
-| WB-009 (duty registration)                        | §4.3 (UI-002), §5.1 (`/api/dienst`), §6.2 (DienstModule)                            | `waterbeheer_dienst` table; chip pre-fills logged-in user, datalist of water managers                                                 |
-| ACT-006 (editable action texts)                   | §4.3 (UI-010b), §5.1 (`/api/actieteksten`), §6.2 (ActieTekstenModule)               | `actie_teksten` templates rendered with placeholders; built-in defaults; Administrator-only edit                                      |
-| WB-005 (consumption deltas)                       | §5.4, §6.2 (`berekenVerbruik`)                                                      | Derived, jsdom-tested                                                                                                                 |
+| WB-009 (duty registration)                        | §4.3 (UI-002), §5.1 (`/api/dienst`), `architecture/frontend.md` (DienstModule)      | `waterbeheer_dienst` table; chip pre-fills logged-in user, datalist of water managers                                                 |
+| ACT-006 (editable action texts)                   | §4.3 (UI-010b), §5.1 (`/api/actieteksten`), `architecture/frontend.md` (ActieTekstenModule) | `actie_teksten` templates rendered with placeholders; built-in defaults; Administrator-only edit                                      |
+| WB-005 (consumption deltas)                       | §5.4, `architecture/frontend.md` (`berekenVerbruik`)                                | Derived, jsdom-tested                                                                                                                 |
 | CO-001..004 (coordinator rounds)                  | §4.3 (UI-006..009), §5.1, §7.3                                                      | metingen_coordinatoren + checklist + daggegevens + logboek                                                                            |
 | ACT-001..005 (actions)                            | §3 (DD-009/014), §4.3 (UI-005), §7 (ActiesRepository, TakenService)                 | Composed server-side into per-bath Taken (Verplicht vs Overige); fire-and-forget generation; filter rondetaak ↔ `filter_spoelen` sync |
 | LIM-001..003 (limits)                             | §4.3 (UI-010), §5.1, §7.3                                                           | limieten table incl. thresholds + season; read any-role, edit Administrator-only (R-006)                                              |
 | ADM-001..004 (users/database)                     | §4.3 (UI-011/012), §5.1, §7                                                         | gebruikers + database routers; CSV; danger zone                                                                                       |
-| TRD-001 (trends)                                  | §4.3 (UI-013), §5.1 (`/api/trend`), §6.2 (TrendModule)                              | Chart.js over a date range; Waterbeheerder only (R-006)                                                                               |
+| TRD-001 (trends)                                  | §4.3 (UI-013), §5.1 (`/api/trend`), `architecture/frontend.md` (TrendModule)        | Chart.js over a date range; Waterbeheerder only (R-006)                                                                               |
 
 ---
 

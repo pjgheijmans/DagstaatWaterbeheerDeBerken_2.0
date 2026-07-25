@@ -24,7 +24,7 @@ gecontaineriseerd met Docker. Code en commentaar zijn in het Nederlands.
 graph TB
     subgraph Docker["Docker Stack (dev/test)"]
         subgraph Web["Container: zwembad_web (Apache + mod_php, PHP 8.0)"]
-            Slim["Slim 4\npublic/index.php\n• PHP-DI container\n• bin/init-db.php (schema)\n• luistert op :8080"]
+            Slim["Slim 4\npublic/index.php\n• PHP-DI container\n• bin/init-db.php (schema)\n• luistert op :8888"]
         end
         subgraph DB["Container: zwembad_db (MySQL 8)"]
             MySQL[("MySQL\nzwembad_status")]
@@ -130,7 +130,7 @@ graph LR
 
     subgraph WB_Tab["Dagstaat — Waterbeheer"]
         WB1["Diep/Ondiep\n• Meetwaarden\n• Verbruik\n• Verwarmingssysteem\n• Bezoekers\n• Taken"]
-        WB2["Peuterbad\n• Meetwaarden\n• Verbruik\n• Taken"]
+        WB2["Peuterbad\n• Meetwaarden en Verbruik\n• Taken"]
         WB3["Logboek"]
     end
 

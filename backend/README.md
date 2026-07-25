@@ -93,7 +93,7 @@ PHP 8.0 + MySQL 8) met één commando. De web-container installeert `vendor/` al
 ontbreekt en provisioneert het schema bij start (zie `Dockerfile`).
 
 ```bash
-docker compose up -d              # app op http://localhost:8080, DB op :3306
+docker compose up -d              # app op http://localhost:8888, DB op :3306
 docker logs -f zwembad_web        # logs volgen
 docker compose down               # stoppen (down -v wist ook de DB)
 ```
@@ -106,15 +106,15 @@ cd backend
 composer install
 # DB-gegevens via omgevingsvariabelen (of pas config/settings.php aan):
 DB_HOST=127.0.0.1 DB_USER=root DB_PASSWORD=geheim_wachtwoord DB_NAME=zwembad_status \
-  php -S localhost:8080 -t public
+  php -S localhost:8888 -t public
 ```
 
 Test de API (de `/api`-paden routen prima via de built-in server):
 
 ```bash
-curl -i -c cookies.txt -X POST localhost:8080/api/login \
+curl -i -c cookies.txt -X POST localhost:8888/api/login \
   -H 'Content-Type: application/json' -d '{"username":"Admin","password":"lpphw"}'
-curl -i -b cookies.txt localhost:8080/api/ingelogd
+curl -i -b cookies.txt localhost:8888/api/ingelogd
 ```
 
 > **Statische assets op de PHP built-in server:** de built-in server kapt verzoeken met
