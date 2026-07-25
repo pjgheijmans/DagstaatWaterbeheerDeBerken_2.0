@@ -96,7 +96,14 @@
       "Bash(seq 1 40)",
       "Bash(break)",
       "Bash(sleep 1)",
-      "Bash(echo \"--- init-db ---\")"
+      "Bash(echo \"--- init-db ---\")",
+      "Bash(timeout 10 docker logs -f zwembad_web)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "Read(///wsl.localhost/Ubuntu/home/pheijman/projects/NewSiteWaterbeheerDeBercken/**)",
+      "Bash(timeout 8 docker logs -f zwembad_web)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://localhost:8888/)",
+      "Bash(docker network *)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://localhost:8888/api/versie)"
     ]
   }
 }
