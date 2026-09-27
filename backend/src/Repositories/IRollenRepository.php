@@ -18,4 +18,7 @@ interface IRollenRepository
     public function update(string $id, array $data): void;
 
     public function remove(string $id): void;
+
+    /** Zaai de standaardrollen + rechtenmatrix (idempotent). */
+    public function seedDefaults(): void;
 }

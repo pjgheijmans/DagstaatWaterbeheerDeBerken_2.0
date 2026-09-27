@@ -42,8 +42,13 @@ abstract class IntegrationTestCase extends TestCase
         self::$pdo = $container->get(PDO::class);
 
         if (!self::$schemaKlaar) {
-            // Schema zeker stellen (idempotent; de container doet dit ook bij opstart).
-            $container->get(IDatabaseRepository::class)->runInitSql();
+            // Schema + standaardwaarden zeker stellen (idempotent; de container doet dit
+            // ook bij opstart via bin/init-db.php). seedAllDefaults zaait de referentie-
+            // data (baden, rollen, configuratie, limieten, gebruikers) die vroeger in
+            // init.sql stond en waar veel tests op leunen (bv. badId('Diep')).
+            $repo = $container->get(IDatabaseRepository::class);
+            $repo->runInitSql();
+            $repo->seedAllDefaults();
             self::$schemaKlaar = true;
         }
     }

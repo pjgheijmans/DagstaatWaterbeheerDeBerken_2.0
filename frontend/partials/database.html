@@ -151,12 +151,9 @@
                     </tr>
                     <tr>
                         <td><b>Gebruikers</b></td>
-                        <td>Bevat alle inlogaccounts van het personeel.</td>
+                        <td>Bevat de inlogaccounts van het personeel. Export bevat geen wachtwoorden; beheer accounts via het scherm Gebruikersbeheer.</td>
                         <td><button class="btn-centraal-opslaan" style="padding:8px 15px; font-size:14px;" onclick="exporteerTabel('gebruikers')">CSV Exporteren</button></td>
-                        <td>
-                            <button class="btn-centraal-opslaan" style="padding:8px 15px; font-size:14px; background-color:#17a2b8;" onclick="triggerImportBladeren('gebruikers')">CSV Importeren</button>
-                            <input type="file" id="import-file-gebruikers" accept=".csv" style="display:none;" onchange="verwerkCsvUpload(this, 'gebruikers')">
-                        </td>
+                        <td>—</td>
                         <td><button class="btn-wissen-gevaar" onclick="leegmakenTabel('gebruikers')">Tabel Leegmaken</button></td>
                     </tr>
 

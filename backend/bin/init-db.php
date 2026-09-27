@@ -43,5 +43,12 @@ if ($pdo === null) {
 }
 
 echo "init.sql uitvoeren (per statement; dubbele kolommen worden genegeerd)...\n";
-$container->get(IDatabaseRepository::class)->runInitSql();
-echo "Schema + seed-accounts klaar.\n";
+$repo = $container->get(IDatabaseRepository::class);
+$repo->runInitSql();
+
+// Standaardwaarden (limieten + default-gebruikers met rollen) in code zaaien — de
+// enige bron van waarheid, gedeeld met "Maak nieuwe database aan". Idempotent
+// (INSERT IGNORE), dus veilig bij elke start; garandeert bovendien altijd een
+// account om mee in te loggen.
+$repo->seedAllDefaults();
+echo "Schema + standaardwaarden (baden, rollen, configuratie, limieten, gebruikers) klaar.\n";

@@ -13,4 +13,7 @@ interface IConfiguratieRepository
     public function getAll(): array;
 
     public function upsert(string $sleutel, string $waarde): void;
+
+    /** Zaai de standaardconfiguratie (idempotent). */
+    public function seedDefaults(): void;
 }

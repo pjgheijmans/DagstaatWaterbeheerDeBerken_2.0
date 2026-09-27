@@ -103,7 +103,18 @@
       "Bash(timeout 8 docker logs -f zwembad_web)",
       "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://localhost:8888/)",
       "Bash(docker network *)",
-      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://localhost:8888/api/versie)"
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' http://localhost:8888/api/versie)",
+      "Bash(gh api *)",
+      "Bash(gh pr create --title 'docs: fix stale port refs, dedupe EDS/architecture overlap, rewrite README' --body ' *)",
+      "Bash(command -v gh)",
+      "Read(//usr/local/bin/**)",
+      "Bash(\"/mnt/c/Program Files/GitHub CLI/gh.exe\" --version)",
+      "Bash('/mnt/c/Program Files/GitHub CLI/gh.exe' pr create --title 'docs: fix stale port refs, dedupe EDS/architecture overlap, rewrite README' --body ' *)",
+      "Bash(\"/mnt/c/Program Files/GitHub CLI/gh.exe\" pr view 86 --json state,mergeable,statusCheckRollup,title)",
+      "Bash(\"/mnt/c/Program Files/GitHub CLI/gh.exe\" pr checks 86 --watch)",
+      "Bash(\"/mnt/c/Program Files/GitHub CLI/gh.exe\" pr merge 86 --merge)",
+      "Bash(\"/mnt/c/Program Files/GitHub CLI/gh.exe\" pr view 86 --json state,mergedAt,url)",
+      "Bash(git branch *)"
     ]
   }
 }

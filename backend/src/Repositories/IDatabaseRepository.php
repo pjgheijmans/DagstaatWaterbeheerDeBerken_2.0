@@ -20,6 +20,12 @@ interface IDatabaseRepository
 
     public function seedAllDefaults(): void;
 
+    /**
+     * Herstel de standaardgebruikers nadat de gebruikers-tabel is geleegd, zodat
+     * er altijd een account overblijft om mee in te loggen (geen uitsluiting).
+     */
+    public function herstelStandaardGebruikers(): void;
+
     public function getBadId(string $badNaam): ?int;
 
     /**

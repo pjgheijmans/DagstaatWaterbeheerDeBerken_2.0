@@ -30,7 +30,7 @@ class GebruikersRepository implements IGebruikersRepository
     public function findByLogin(string $inlognaam, string $wachtwoord): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT id, voornaam, achternaam, inlognaam, taak, wachtwoord
+            'SELECT id, voornaam, achternaam, inlognaam, wachtwoord
              FROM gebruikers WHERE inlognaam = ?',
         );
         $stmt->execute([$inlognaam]);
@@ -55,7 +55,6 @@ class GebruikersRepository implements IGebruikersRepository
         return [
             'id' => (int) $rij['id'],
             'gebruikersnaam' => $rij['inlognaam'],
-            'taak' => $rij['taak'],
             'voornaam' => $rij['voornaam'],
             'achternaam' => $rij['achternaam'],
             'inlognaam' => $rij['inlognaam'],

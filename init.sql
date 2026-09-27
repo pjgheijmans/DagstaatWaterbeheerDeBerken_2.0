@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS metingen_peuterbad (
     UNIQUE KEY unieke_meting_peuterbad (bad_id, datum)
 );
 
-INSERT IGNORE INTO baden (naam) VALUES ('Diep'), ('Ondiep'), ('Peuterbad');
+-- Standaardbaden worden in code gezaaid (DatabaseRepository::seedBaden, via
+-- seedAllDefaults). Zie de toelichting bij de limieten hieronder.
 
 -- Tabel voor de centrale limieten. min/max zijn DECIMAL(10,2) zodat grote
 -- meterstanden passen.
@@ -81,58 +82,22 @@ CREATE TABLE IF NOT EXISTS limieten (
     max_waarde DECIMAL(10,2) NULL
 );
 
--- Standaard limieten invoeren bij de eerste start
-INSERT IGNORE INTO limieten (parameter_naam, min_waarde, max_waarde) VALUES
-('ph_waarde', 6.80, 7.60),
-('chloor_waarde', 0.50, 1.50),
-('flow_diep', 250.00, 450.00),
-('flow_ondiep', 50.00, 120.00),
-('flow_peuterbad', 3.00, 10.00),
-('filter_druk_in', 0.20, 1.50),
-('filter_druk_uit', 0.20, 1.50),
-('filter_druk_peuterbad', 0.20, 1.50),
-('kathodische_bescherming', 0.20, 2.50),
-('watertemperatuur', 20.00, 30.00),
-('elektriciteit_nacht', 0.00, 500.00),
-('elektriciteit_dag', 0.00, 500.00),
-('gas', 0.00, 500.00),
-('water_diep', 0.00, 99999.00),
-('water_ondiep', 0.00, 99999.00),
-('water_totaal', 0.00, 99999.00),
-('water_peuterbad', 0.00, 99999.00),
-('chloor_vrij', 0.50, 1.50),
-('chloor_totaal', 0.30, 3.50),
-('chloor_gebonden', 0.30, 3.50),
--- Actie-drempelwaarden (max_waarde = drempelwaarde; actie wanneer gemeten waarde deze overschrijdt/onderschrijdt)
-('actie_druk_verschil', 0.00, 0.40),
-('actie_druk_peuterbad', 0.00, 1.00),
-('actie_flow_diep', 0.00, 250.00),
-('actie_flow_ondiep', 0.00, 75.00),
-('actie_flow_peuterbad', 0.00, 4.00),
-('actie_chloor_min', 0.00, 200.00),
-('actie_zwavelzuur_min', 0.00, 50.00),
-('actie_bezoekers_max', 0.00, 750.00),
-('actie_spoelbeurt_max', 0.00, 1500.00),
-('actie_spoelbeurt_dagen', 0.00, 7.00),
-('actie_Flocculant_min', 0.00, 10.00),
-('actie_gebonden_chloor_max', 0.00, 1.00),
-('actie_chloor_peuterbad_min', 0.00, 10.00),
-('actie_zwavelzuur_peuterbad_min', 0.00, 5.00),
-('seizoen_begin', 0.00, 20260425.00),
-('seizoen_eind', 0.00, 20260901.00);
+-- Standaardlimieten worden in code gezaaid — LimietenRepository::seedDefaults()
+-- (DEFAULT_LIMIETEN), aangeroepen via seedAllDefaults() in bin/init-db.php (elke
+-- start) en "Maak nieuwe database aan". Eén bron van waarheid; limieten valt onder
+-- ALL_DATA_TABLES en wordt door "wis alles" geleegd, dus een code-seeder is sowieso
+-- nodig. Hier daarom géén INSERT meer.
 
--- taak is vervangen door rollen (zie hieronder); mag daarom leeg zijn en blijft
--- alleen behouden voor backfill/legacy.
+-- Autorisatie loopt volledig via rollen (zie hieronder). De standaardaccounts
+-- worden in code gezaaid — GebruikersRepository::seedDefaults(), aangeroepen door
+-- bin/init-db.php (elke start) en "Maak nieuwe database aan" — niet meer hier, zodat
+-- er één bron van waarheid is voor de default-gebruikers en hun rollen.
 CREATE TABLE IF NOT EXISTS gebruikers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     voornaam VARCHAR(50) NOT NULL,
     achternaam VARCHAR(50) NOT NULL,
     inlognaam VARCHAR(50) NOT NULL UNIQUE,
-    wachtwoord VARCHAR(255) NOT NULL,
-    taak ENUM('waterbeheerder', 'coordinator', 'Administrator') NULL);
-
-INSERT IGNORE INTO gebruikers (voornaam, achternaam, inlognaam, wachtwoord, taak) VALUES ('Admin', '', 'Admin', 'lpphw', 'Administrator');
-INSERT IGNORE INTO gebruikers (voornaam, achternaam, inlognaam, wachtwoord, taak) VALUES ('Paul', 'Heijmans', 'pheijmans', 'Paul', 'waterbeheerder');
+    wachtwoord VARCHAR(255) NOT NULL);
 
 -- ── Rollen & rechten (RBAC) ───────────────────────────────────────────────────
 -- Een rol bundelt rechten per domein (beheer/waterbeheer/coordinator). Een gebruiker
@@ -160,34 +125,6 @@ CREATE TABLE IF NOT EXISTS gebruiker_rollen (
     FOREIGN KEY (rol_id) REFERENCES rollen(id) ON DELETE CASCADE
 );
 
--- Standaardrollen (idempotent).
-INSERT IGNORE INTO rollen (naam, mag_historie_bewerken) VALUES ('Beheer', 1);
-INSERT IGNORE INTO rollen (naam, mag_historie_bewerken) VALUES ('Waterbeheer', 1);
-INSERT IGNORE INTO rollen (naam, mag_historie_bewerken) VALUES ('Coordinator', 0);
-
--- Rechtenmatrix per standaardrol (idempotent via INSERT IGNORE op de samengestelde PK).
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'beheer',      'schrijven' FROM rollen WHERE naam='Beheer';
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'waterbeheer', 'geen'      FROM rollen WHERE naam='Beheer';
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'coordinator', 'geen'      FROM rollen WHERE naam='Beheer';
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'beheer',      'geen'      FROM rollen WHERE naam='Waterbeheer';
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'waterbeheer', 'schrijven' FROM rollen WHERE naam='Waterbeheer';
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'coordinator', 'schrijven' FROM rollen WHERE naam='Waterbeheer';
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'beheer',      'geen'      FROM rollen WHERE naam='Coordinator';
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'waterbeheer', 'geen'      FROM rollen WHERE naam='Coordinator';
-INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau) SELECT id, 'coordinator', 'schrijven' FROM rollen WHERE naam='Coordinator';
-
--- Eenmalige backfill: koppel bestaande gebruikers aan de rol die bij hun oude taak hoort.
--- Draait alleen voor gebruikers die nog geen enkele rol hebben, dus idempotent en niet-destructief.
-INSERT IGNORE INTO gebruiker_rollen (gebruiker_id, rol_id)
-    SELECT g.id, r.id FROM gebruikers g JOIN rollen r ON r.naam='Beheer'
-    WHERE g.taak='Administrator' AND NOT EXISTS (SELECT 1 FROM gebruiker_rollen gr WHERE gr.gebruiker_id=g.id);
-INSERT IGNORE INTO gebruiker_rollen (gebruiker_id, rol_id)
-    SELECT g.id, r.id FROM gebruikers g JOIN rollen r ON r.naam='Waterbeheer'
-    WHERE g.taak='waterbeheerder' AND NOT EXISTS (SELECT 1 FROM gebruiker_rollen gr WHERE gr.gebruiker_id=g.id);
-INSERT IGNORE INTO gebruiker_rollen (gebruiker_id, rol_id)
-    SELECT g.id, r.id FROM gebruikers g JOIN rollen r ON r.naam='Coordinator'
-    WHERE g.taak='coordinator' AND NOT EXISTS (SELECT 1 FROM gebruiker_rollen gr WHERE gr.gebruiker_id=g.id);
-
 -- Generieke configuratie (sleutel/waarde). Beheerbaar door Administrator.
 CREATE TABLE IF NOT EXISTS configuratie (
     sleutel       VARCHAR(64)  NOT NULL PRIMARY KEY,
@@ -196,8 +133,6 @@ CREATE TABLE IF NOT EXISTS configuratie (
     type          VARCHAR(20)  NOT NULL DEFAULT 'tekst',
     bijgewerkt_op TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-INSERT IGNORE INTO configuratie (sleutel, waarde, omschrijving, type) VALUES
-('sessie_timeout_minuten', '5', 'Sessie-time-out (idle/sliding) in minuten', 'getal');
 
 -- Vrij-tekst logboek voor waterbeheerders
 CREATE TABLE IF NOT EXISTS logboek (
@@ -233,12 +168,6 @@ CREATE TABLE IF NOT EXISTS coordinatoren_daggegevens (
     auteur VARCHAR(100) NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
-
--- Migratie: verwijder de ongebruikte kolom bezoekers_totaal_spoelbeurt uit
--- bestaande databases (werd nooit gevuld; de waarde is berekend, niet opgeslagen).
--- Kale DROP COLUMN — op een DB zonder de kolom faalt dit onschadelijk
--- ("Can't DROP"), wat runInitSql opvangt.
-ALTER TABLE coordinatoren_daggegevens DROP COLUMN bezoekers_totaal_spoelbeurt;
 
 -- Wie was er op dienst bij waterbeheer (altijd 2 personen; één logt in, de ander
 -- wordt handmatig ingevuld). Eén record per dag.
@@ -286,22 +215,12 @@ CREATE TABLE IF NOT EXISTS actie_teksten (
     omschrijving  VARCHAR(255) NULL
 );
 
--- Standaard actie-sjablonen bij de eerste start (idempotent).
-INSERT IGNORE INTO actie_teksten (actie_sleutel, sjabloon, omschrijving) VALUES
-('filter_spoelen_druk',         'Filterdruk verschil {bad} > {drempel} bar — Filter spoelen', 'Diep/Ondiep: drukverschil in-uit te hoog'),
-('filter_spoelen_druk_peuter',  'Filterdruk Peuterbad > {drempel} bar — Filter spoelen',      'Peuterbad: filterdruk te hoog'),
-('filter_spoelen_flow',         'Flow {bad} onder {drempel} m³/h — Filter spoelen',           'Diep/Ondiep: flow te laag'),
-('filter_spoelen_flow_peuter',  'Flow Peuterbad onder {drempel} m³/h — Filter spoelen',       'Peuterbad: flow te laag'),
-('chloor_peuterbad_bijvullen',  'Chloorvoorraad Peuterbad {waarde} < {drempel} — Vat bijvullen',      'Peuterbad: chloorvat bijna leeg'),
-('zwavelzuur_peuterbad_bijvullen','Zwavelzuurvoorraad Peuterbad {waarde} < {drempel} — Vat bijvullen','Peuterbad: zwavelzuurvat bijna leeg'),
-('chloor_bestellen',            'Chloorvoorraad onder {drempel} liter — Chloor bestellen',    'Verbruik: chloorvoorraad te laag'),
-('zwavelzuur_bestellen',        'Zwavelzuurvoorraad onder {drempel} liter — Zwavelzuur bestellen','Verbruik: zwavelzuurvoorraad te laag'),
-('Flocculant_bijvullen',         'Flocculant {waarde} < {drempel} — Vul Flocculant bij',         'Verbruik: Flocculant bijna op'),
-('filter_spoelen_bezoekers',    'Aantal bezoekers op een dag {waarde} > {drempel} — Filter spoelen',     'Dagbezoek boven de drempel'),
-('filter_spoelen_spoelbeurt',   'Aantal bezoekers sinds spoelbeurt {bad} {waarde} > {drempel} — Filter spoelen', 'Cumulatief bezoek sinds laatste spoelbeurt'),
-('filter_spoelen_dagen',        'Laatste spoelbeurt {bad} {waarde} dagen geleden > {drempel} dagen — Filter spoelen', 'Te lang geleden sinds laatste spoelbeurt'),
-('filter_spoelen_gebonden',     'Gebonden chloor {bad} {waarde} > {drempel} mg/l — Filter spoelen', 'Coördinator: gebonden chloor te hoog'),
-('peuterbad_leeglaten',          'Peuterbad is vandaag gebruikt — Peuterbad water leeglaten',   'Peuterbad na gebruik leeglaten');
+-- GEEN seed hier. De standaard actie-sjablonen staan in code
+-- (ActieTekstenRepository::DEFAULT_ACTIE_TEKSTEN) en zijn de bron van waarheid.
+-- Deze tabel bevat alléén door de beheerder gewijzigde overrides; leeg = alle
+-- sjablonen op hun code-default. De tabel vooraf vullen met kopieën van de defaults
+-- zou zinloze no-op-overrides maken die latere wijzigingen aan de code-defaults
+-- zouden maskeren.
 
 -- Tabel voor rondetaken (dagelijkse onderhoudstaken tijdens een ronde).
 -- De takencatalogus zelf staat in code (RondetakenRepository); hier worden

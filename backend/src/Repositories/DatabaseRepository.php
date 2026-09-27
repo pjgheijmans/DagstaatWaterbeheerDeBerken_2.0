@@ -34,12 +34,20 @@ class DatabaseRepository implements IDatabaseRepository
         'verbruik_diep_ondiep' => 'SELECT datum, Flocculant, water_diep, water_ondiep, water_totaal, elektriciteit_nacht, elektriciteit_dag, gas, chemicalien_chloor, chemicalien_zwavelzuur FROM verbruik_diep_ondiep ORDER BY datum DESC',
         'verwarmings_systeem_diep_ondiep' => 'SELECT datum, verwarming_status_1, verwarming_status_2, verwarming_status_3, verwarming_status_4, verwarming_druk_ok, verwarming_visuele_controle FROM verwarmings_systeem_diep_ondiep ORDER BY datum DESC',
         'acties' => 'SELECT a.id, b.naam AS bad_naam, a.datum, a.beschrijving, a.actie_type, a.opgelost, a.opgelost_op, a.created_at FROM acties a JOIN baden b ON a.bad_id = b.id ORDER BY a.datum DESC',
+        // Expliciete kolomlijst: NOOIT de wachtwoord-hash exporteren (de SELECT *-fallback
+        // zou dat wél doen). Rollen zitten in gebruiker_rollen, niet hier.
+        'gebruikers' => 'SELECT id, voornaam, achternaam, inlognaam FROM gebruikers ORDER BY id',
     ];
+
+    /** Standaardbaden (bekkens) — de vaste referentiedata waar metingen naar verwijzen. */
+    private const DEFAULT_BADEN = ['Diep', 'Ondiep', 'Peuterbad'];
 
     public function __construct(
         private PDO $pdo,
         private ILimietenRepository $limietenRepo,
         private IGebruikersRepository $gebruikersRepo,
+        private IRollenRepository $rollenRepo,
+        private IConfiguratieRepository $configuratieRepo,
     ) {
     }
 
@@ -96,7 +104,31 @@ class DatabaseRepository implements IDatabaseRepository
 
     public function seedAllDefaults(): void
     {
+        // Volgorde respecteert afhankelijkheden: baden bestaat vóór metingen-FK's, en
+        // rollen worden gezaaid vóór gebruikers (die koppelen aan rollen op naam).
+        $this->seedBaden();
+        $this->rollenRepo->seedDefaults();
+        $this->configuratieRepo->seedDefaults();
         $this->limietenRepo->seedDefaults();
+        $this->gebruikersRepo->seedDefaults();
+    }
+
+    /** Zaai de standaardbaden (idempotent, niet-destructief). */
+    private function seedBaden(): void
+    {
+        $stmt = $this->pdo->prepare('INSERT IGNORE INTO baden (naam) VALUES (?)');
+        foreach (self::DEFAULT_BADEN as $naam) {
+            $stmt->execute([$naam]);
+        }
+    }
+
+    public function herstelStandaardGebruikers(): void
+    {
+        // Ruim eerst verweesde rolkoppelingen op: bij een losse TRUNCATE van
+        // `gebruikers` blijven die staan (TRUNCATE voert de ON DELETE CASCADE niet
+        // uit). Daarna zaaien we de standaardgebruikers opnieuw; rollen/rol_rechten
+        // blijven bij truncateAll ongemoeid, dus de rolkoppeling slaagt.
+        $this->pdo->exec('DELETE FROM gebruiker_rollen');
         $this->gebruikersRepo->seedDefaults();
     }
 

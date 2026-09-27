@@ -32,10 +32,13 @@ class DatabaseController
         'acties', 'limieten', 'actie_teksten', 'gebruikers',
     ];
 
+    // NB: 'gebruikers' bewust NIET importeerbaar — de export bevat geen wachtwoord-hash
+    // (die exporteren voor round-trip is een security-antipatroon). Accounts beheer je
+    // via het Gebruikersbeheer-scherm; standaardaccounts komen uit seedDefaults().
     private const IMPORT_TABLES = [
         'logboek', 'metingen_diep_ondiep', 'metingen_coordinatoren', 'coordinatoren_checklist',
         'coordinatoren_daggegevens', 'metingen_peuterbad', 'verbruik_diep_ondiep',
-        'verwarmings_systeem_diep_ondiep', 'waterbeheer_dienst', 'limieten', 'actie_teksten', 'gebruikers',
+        'verwarmings_systeem_diep_ondiep', 'waterbeheer_dienst', 'limieten', 'actie_teksten',
     ];
 
     public function __construct(private IDatabaseService $service)

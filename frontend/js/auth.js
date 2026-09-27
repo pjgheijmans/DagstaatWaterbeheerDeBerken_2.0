@@ -118,9 +118,7 @@ class AuthModule {
         document.getElementById('scherm-login').style.display = 'none';
         document.getElementById('scherm-dashboard').style.display = 'block';
         const rollen =
-            gebruiker.rolNamen && gebruiker.rolNamen.length
-                ? gebruiker.rolNamen.join(', ')
-                : gebruiker.taak || '';
+            gebruiker.rolNamen && gebruiker.rolNamen.length ? gebruiker.rolNamen.join(', ') : '';
         document.getElementById('welkom-tekst').innerText =
             `${gebruiker.weergavenaam || gebruiker.voornaam}${rollen ? ` (${rollen})` : ''}`;
 

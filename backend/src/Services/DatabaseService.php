@@ -98,11 +98,18 @@ class DatabaseService implements IDatabaseService
     public function truncate(string $tabel): void
     {
         $this->repo->truncate($tabel);
+        if ($tabel === 'gebruikers') {
+            // Voorkom uitsluiting: laat na het legen altijd de standaardgebruikers
+            // achter zodat er een account is om mee in te loggen.
+            $this->repo->herstelStandaardGebruikers();
+        }
     }
 
     public function wisAlles(): void
     {
         $this->repo->truncateAll();
+        // Ook na "verwijder alles" een standaardaccount achterlaten om mee in te loggen.
+        $this->repo->herstelStandaardGebruikers();
     }
 
     public function initialiseer(): void

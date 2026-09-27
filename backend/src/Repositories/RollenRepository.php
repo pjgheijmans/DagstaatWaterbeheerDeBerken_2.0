@@ -15,8 +15,40 @@ class RollenRepository implements IRollenRepository
     /** De drie domeinen, in vaste volgorde voor de matrix. */
     private const DOMEINEN = ['beheer', 'waterbeheer', 'coordinator'];
 
+    /**
+     * Standaardrollen + hun rechtenmatrix — de bron van waarheid voor een verse DB.
+     * @var list<array{naam:string,mag_historie:int,rechten:array<string,string>}>
+     */
+    private const DEFAULT_ROLLEN = [
+        ['naam' => 'Beheer', 'mag_historie' => 1, 'rechten' => ['beheer' => 'schrijven', 'waterbeheer' => 'geen', 'coordinator' => 'geen']],
+        ['naam' => 'Waterbeheer', 'mag_historie' => 1, 'rechten' => ['beheer' => 'geen', 'waterbeheer' => 'schrijven', 'coordinator' => 'schrijven']],
+        ['naam' => 'Coordinator', 'mag_historie' => 0, 'rechten' => ['beheer' => 'geen', 'waterbeheer' => 'geen', 'coordinator' => 'schrijven']],
+    ];
+
     public function __construct(private PDO $pdo)
     {
+    }
+
+    /**
+     * Zaai de standaardrollen en hun rechten. Idempotent en niet-destructief
+     * (INSERT IGNORE): bestaande rollen en door de beheerder aangepaste rechten
+     * blijven ongemoeid.
+     */
+    public function seedDefaults(): void
+    {
+        $rolStmt = $this->pdo->prepare(
+            'INSERT IGNORE INTO rollen (naam, mag_historie_bewerken) VALUES (?, ?)',
+        );
+        $rechtStmt = $this->pdo->prepare(
+            'INSERT IGNORE INTO rol_rechten (rol_id, domein, niveau)
+             SELECT id, ?, ? FROM rollen WHERE naam = ?',
+        );
+        foreach (self::DEFAULT_ROLLEN as $rol) {
+            $rolStmt->execute([$rol['naam'], $rol['mag_historie']]);
+            foreach ($rol['rechten'] as $domein => $niveau) {
+                $rechtStmt->execute([$domein, $niveau, $rol['naam']]);
+            }
+        }
     }
 
     public function getAll(): array
