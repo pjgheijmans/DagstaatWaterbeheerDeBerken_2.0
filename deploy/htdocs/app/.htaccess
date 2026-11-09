@@ -1,0 +1,17 @@
+# Deze map (htdocs/app/) bevat de applicatiebron en mag NIET rechtstreeks via het
+# web benaderbaar zijn. Alle toegang loopt via htdocs/index.php; PHP leest de
+# bestanden van schijf, dus deze blokkade raakt de werking van de app niet.
+#
+# Belangrijk: zonder deze regel zou bijv. /app/init.sql of /app/backend/config/
+# settings.local.php als download bereikbaar zijn.
+
+# Apache 2.4
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+
+# Apache 2.2 (oudere hosts)
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
