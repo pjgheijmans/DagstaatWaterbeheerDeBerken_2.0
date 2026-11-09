@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Hosting-specifieke DB-gegevens.
+ *
+ * KOPIEER dit bestand op de server naar `settings.local.php` (zelfde map) en vul
+ * de echte waarden in. `settings.local.php` staat in .gitignore, dus je wachtwoord
+ * komt NIET in git/OneDrive terecht. Env-variabelen (DB_*) overrulen deze waarden.
+ */
+
+return [
+    'host' => 'localhost',          // MySQL-host op de webserver (meestal localhost)
+    'name' => '2372waterbeheer',    // Vaste databasenaam bij de host — niet wijzigen
+    'user' => 'VUL-DB-GEBRUIKER-IN',
+    'pass' => 'VUL-DB-WACHTWOORD-IN',
+];

@@ -1,0 +1,6 @@
+# Web-root (htdocs). Stuur elk verzoek dat geen bestaand bestand is naar de
+# Slim front controller (index.php → app/backend/public/index.php).
+# Identiek aan backend/public/.htaccess.
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [QSA,L]
