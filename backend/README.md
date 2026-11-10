@@ -146,6 +146,11 @@ badge bovenaan). De frontend-tests (jsdom) blijven in de project-root onder Node
 
 ## Deployen naar de gedeelde host
 
+> Volledige, host-specifieke stap-voor-stap (vaste web-root die niet naar
+> `backend/public/` kan wijzen, vaste DB-naam, geen SSH): zie
+> [`../docs/deployment.md`](../docs/deployment.md). Onderstaande is de beknopte,
+> generieke versie.
+
 1. `composer install` **lokaal**, en upload de hele `backend/`-map **inclusief `vendor/`**
    (de host heeft geen Composer nodig). Let op: `composer.json` pint het platform op PHP
    8.0, zodat de dependencies 8.0-compatibel zijn.
