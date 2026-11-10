@@ -9,8 +9,9 @@ acties/taken en trendanalyse. Drie rollen — **Waterbeheerder**, **Coördinator
 **Administrator** — elk met hun eigen schermen.
 
 **Stack:** PHP 8.0 (Slim 4 + PHP-DI) backend, vanilla-JS-frontend (ES6-klassen, geen
-bundler), MySQL 8. Draait op gedeelde Apache+MySQL-hosting in productie; dev/test
-gecontaineriseerd met Docker. Code en comments zijn in het Nederlands.
+bundler), MySQL 8. Draait op gedeelde Apache+MySQL-hosting in productie (zie
+[`docs/deployment.md`](docs/deployment.md)); dev/test gecontaineriseerd met Docker.
+Code en comments zijn in het Nederlands.
 
 ---
 
@@ -33,7 +34,8 @@ Elk document heeft een eigen rol — geen overlap:
 | Document                                                                  | Vertelt je…                                                                                   |
 | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | [`CLAUDE.md`](CLAUDE.md)                                                  | Dev-commando's, architectuurconventies, niet-triviale gotchas — het startpunt om te bouwen      |
-| [`backend/README.md`](backend/README.md)                                 | Backend-specifiek: endpoints per domein, lokaal draaien zonder Docker, deployen naar de host   |
+| [`backend/README.md`](backend/README.md)                                 | Backend-specifiek: endpoints per domein, lokaal draaien zonder Docker                          |
+| [`docs/deployment.md`](docs/deployment.md)                               | Stap-voor-stap deployen naar de gedeelde host (vaste web-root/DB-naam, geen SSH): mapindeling, `vendor/` bouwen, `settings.local.php`, schema-init |
 | [`docs/architecture.md`](docs/architecture.md) + [`docs/architecture/`](docs/architecture/) | De structuur: lagen, modules, ER-diagram, sequencediagrammen — geen requirement-/besluit-ID's |
 | [`docs/EPS.md`](docs/EPS.md)                                             | De formele requirements per rol, met traceerbare ID's (`GEN-…`, `WB-…`, …)                     |
 | [`docs/EDS.md`](docs/EDS.md)                                             | De ontwerpbesluiten (`DD-…`) die elke requirement invullen, met verwijzing terug naar het EPS-ID |
