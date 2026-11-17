@@ -14,7 +14,8 @@ Twee host-eigenaardigheden sturen deze aanpak:
 ## Hoe het werkt (in één alinea)
 
 De app verwacht dat Apache's document-root naar `backend/public/` wijst. Dat kan
-hier niet, dus we zetten de hele repo in `htdocs/app/` en plaatsen in `htdocs/`
+hier niet, dus we zetten de app-bestanden (`backend/`, `frontend/`, `init.sql`) in
+`htdocs/app/` en plaatsen in `htdocs/`
 een piepklein `index.php` dat het verzoek doorgeeft aan
 `app/backend/public/index.php`. Die echte front controller gebruikt alleen
 `__DIR__`-relatieve paden, dus alle interne verwijzingen blijven kloppen. De
@@ -30,7 +31,7 @@ htdocs/                 ← vaste web-root
 ├── index.php           ← uit deploy/htdocs/index.php      (lader)
 ├── .htaccess           ← uit deploy/htdocs/.htaccess      (rewrite naar index.php)
 ├── init-web.php        ← uit deploy/htdocs/init-web.php    (EENMALIG, daarna wissen)
-└── app/                ← de HELE repo
+└── app/                ← NIET de hele repo — alleen deze vier:
     ├── .htaccess       ← uit deploy/htdocs/app/.htaccess   (Require all denied)
     ├── backend/
     │   ├── public/  src/  config/  bin/
@@ -38,6 +39,21 @@ htdocs/                 ← vaste web-root
     ├── frontend/
     └── init.sql
 ```
+
+> **Let op — niet de hele repo uploaden.** De app bestaat alleen uit `backend/`,
+> `frontend/` en `init.sql`. De rest van de repo is dev-/build-gereedschap of oude
+> restanten en hoort NIET op de host. Laat weg:
+>
+> - In `backend/`: `test/`, `docker/`, `Dockerfile`, `phpunit*.xml`,
+>   `config/*.example`, `.gitignore`, `README.md`.
+> - In de repo-root: `.git/`, `.github/`, `.claude/`, `.vscode/`, `docs/`,
+>   `deploy/`, `dist/`, `docker-compose.yml`, `package.json`, `jest.config.js`,
+>   `eslint.config.js`, `tsconfig*.json`, en de oude Node/TS-restanten
+>   (`js/`, `php/`, `public/`, `routes/`, `data/`, `forms/`, `images/`, `new_site/`,
+>   `index.php`, `error*.php`, `restructure.py`, `*.htaccessc`, `xx.htaccess`).
+>
+> Het eenvoudigst: gebruik **`dist/site-upload.zip`** (zie stap 4) — die bevat
+> precies de juiste bestanden, met deze uitsluitingen al toegepast.
 
 > **"htdocs" = jouw web-root.** De naam verschilt per host. Bij veel hosters is de
 > **FTP-root meteen de web-root**: log je met FTP in en land je direct tussen de
@@ -104,11 +120,27 @@ alleen de tabellen in een bestaande database.
 
 ### 4. Upload
 
-- De **hele repo** → `htdocs/app/` (inclusief de zojuist gebouwde `backend/vendor/`
-  en je `backend/config/settings.local.php`).
-- De vier glue-bestanden uit `deploy/htdocs/` → op hun plek
-  (`htdocs/index.php`, `htdocs/.htaccess`, `htdocs/init-web.php`,
-  `htdocs/app/.htaccess`).
+**Makkelijkste weg — de kant-en-klare zip.** Bouw één keer een payload-zip met
+exact de juiste bestanden (uitsluitingen uit de "Let op"-box hierboven al
+toegepast):
+
+```bash
+# vanuit de repo-root; vereist python
+python deploy/build-payload.py        # schrijft dist/site-upload.zip
+```
+
+Upload `dist/site-upload.zip` naar je web-root en pak het daar uit (File Manager →
+Extract, of `unzip` via SSH). Je krijgt dan meteen de complete structuur
+(`index.php`, `.htaccess`, `init-web.php` en `app/…`). ⚠️ De zip bevat je
+`settings.local.php` mét DB-wachtwoord — deel 'm niet.
+
+**Handmatig uploaden (alleen FTP, geen uitpakken).** Zet dan zelf op hun plek:
+
+- → `htdocs/app/`: alleen **`backend/`** (incl. `vendor/` en
+  `config/settings.local.php`), **`frontend/`** en **`init.sql`** — niet de rest
+  van de repo (zie de "Let op"-box hierboven).
+- → `htdocs/`: de vier glue-bestanden uit `deploy/htdocs/`
+  (`index.php`, `.htaccess`, `init-web.php`, `app/.htaccess`).
 
 Zorg dat verborgen bestanden (`.htaccess`) meegaan in je FTP-client.
 

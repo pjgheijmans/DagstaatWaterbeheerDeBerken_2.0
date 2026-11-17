@@ -16,23 +16,32 @@ productie-deps:
 cd backend && composer install --no-dev --optimize-autoloader
 ```
 
-Optioneel, voor hosts met een File Manager die kan uitpakken: een kant-en-klare zip
-met forward-slash-paden (werkt op Linux-hosts) komt in `dist/vendor.zip`
-(git-genegeerd). Uitpakken in `app/backend/` geeft `app/backend/vendor/`. Heb je
-alleen FTP zonder "Extract", upload dan de map `backend/vendor/` als bestanden.
+## Complete payload-zip (aanbevolen)
+
+Eén zip met de volledige web-root, dev-rommel er al uit (geen `docker/`,
+`Dockerfile`, `test/`, `phpunit*`, `.example`, en géén oude root-restanten):
+
+```bash
+python deploy/build-payload.py        # schrijft dist/site-upload.zip
+```
+
+Upload `dist/site-upload.zip` naar de web-root en pak uit (File Manager → Extract,
+of `unzip`). ⚠️ Bevat je `settings.local.php` mét DB-wachtwoord — niet delen.
 
 ## Indeling
-
-Kort:
 
 ```
 htdocs/                 ← vaste web-root van de host
 ├── index.php           ← deploy/htdocs/index.php      (lader)
 ├── .htaccess           ← deploy/htdocs/.htaccess      (rewrite)
 ├── init-web.php        ← deploy/htdocs/init-web.php    (EENMALIG; daarna verwijderen)
-└── app/                ← de HELE repo hierin uploaden
+└── app/                ← NIET de hele repo — alleen deze drie + de .htaccess:
     ├── .htaccess       ← deploy/htdocs/app/.htaccess   (blokkeert directe toegang)
     ├── backend/        (incl. vooraf gebouwde vendor/ en config/settings.local.php)
     ├── frontend/
     └── init.sql
 ```
+
+De repo-root bevat verder veel dat NIET op de host hoort (`docker-compose.yml`,
+`docs/`, `deploy/`, `dist/`, Node-tooling en oude Node/TS-restanten als `js/`,
+`php/`, `public/`, `routes/`). De payload-zip hierboven laat dat allemaal weg.
